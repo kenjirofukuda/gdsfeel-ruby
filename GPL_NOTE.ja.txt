@@ -1,0 +1,181 @@
+
+[x]文をコメント、文字列、それ以外（未評価）に分ける
+[x]未評価からリテラルを抽出する
+
+[ ]GDS ヘルプシステム
+　[ ]ブラウザでヘルプをみる
+　　[x]コマンドのインデックス
+　　[x]ヘルプ文面内の他のコマンド参照にハイパーリンクを埋め込む
+　　[ ]トラブル
+　　　( )cgiが正しく機能しないときは、iDiskボリュームそのもののパーミッショを
+疑う必要がある。再ログイン時の、再マウントでアクセス権がクリアされていると思われる。
+　　　( )cgiのプリティプリント機能を用いるとヘルプ文面が壊れる、外しておくか
+<pre>タグに頼らない整形を行うこと
+
+　　[x]cgi仕様
+　　　ソースコードを整形なしで表示する
+
+
+
+[ ]GPL拡張の仕様
+
+
+                  GPL厳格                   GPL拡張
+
+識別子            大文字のみ                小文字も可能
+制御              GOTO許可                  GOTO禁止(Phase 1)
+例外処理          なし                      サポート
+文字列表現        ダブルクオートのみ        シングルクオート可能
+オブジェクト指向  なし                      サポート(Phase2)
+
+
+[ ]GPL拡張のレベル
+
+Phase 1:
+GOTO不要の制御文
+
+Phase 2:
+クラス構文の追加
+例外処理の追加
+
+[ ]クラス構成
+--------------------- データストラクチャー ----------------
+<Structure>
+変数に格納できる単位
+- mode
+- rank
+
+<Scalar>
+- rank := 0
+
+<Logical>(<Scalar>)
+- value := 0 or 1
+
+<Number>(<Scalar>)
+{#NUMBER} := #INTEGER | #REAL
+- mode := #NUMBER
+- as_real
+
+<Character>(<Scalar>)
+- mode := #CHAR
+
+<Array>(Structure)
+has: <Primitive>
+- element_mode
+
+<Vector>(<Array>)
+- rank: 1
+
+<String>(<Vector>)
+- element_mode := #CHAR
+
+-------------- 汎用入出力 ----------------
+<Reader>
+- gets
+- getc
+- ungetc
+
+--------------- 構文単位 ----------------
+<Token>
+- text
+- kind := #UNRESOLVE
+
+<LiteralToken> (<Token>)
+注: #NUMBERは要素数１のベクターをいう
+{#VECTOR} := (#NUMBER<SP>?)+
+- kind := #STRING | #NUMBER | #COMMENT | #VECTOR
+- make_structure
+
+<ReservedToken> (<Token>)
+{#FLOW} := DO WHILE IF...
+{#BUILTIN_OP} := + - RANK IOTA
+- kind := #FLOW | #BUILTIN_OP
+
+--------------------- 字句分解 ----------------
+<Tokenizer>
+文字列を字句に分解する
+use: <Reader>
+makes: <Token>
+- statement
+- tokens
+
+<StringCommentTokenizer> (<Tokenizer>)
+文字列、コメント、それ以外に分解
+- tokens {OVERRIDE}
+
+<OperatorTokenizer> (<Tokenizer>)
+予約語、変数名、演算子
+- tokens {OVERRIDE}
+ 
+--------------------- 構文解析 ----------------
+
+<TokenReader>
+has: <Reader>
+use: <TakenMaker>
+- next
+- has_next?
+
+<SymbolEntry>
+- name
+- storage_class := {GLOBAL|LOCAL|EXTERNAL}
+- variable?
+- method?
+
+<VariableSymbolEntry>
+- method? ==> false
+
+<MethodSymbolEntry>
+- arg_type := {NILADIC|MONADIC|DYADIC}
+- method? ==> true
+
+<SymbolTable>
+has: <SymbolEntry>
+- has_variable?
+- get_value
+- put_value
+- push_entry
+
+--------------------- 作業空間 ----------------
+
+<GDSItem>
+- coordinate_property_mode := {PATH|
+- digitizing_mode
+- layer
+- datatype
+- width
+- texttype
+- pathtype
+- nodetype
+- boxtype
+- sname
+- ashape
+- angle
+- reflection?
+- magnification
+- text_justification
+- font_number
+- text_string  
+
+
+<WorkArea>
+
+--------------------- データベース要素 ----------------
+
+
+
+--------------------- 評価機械 ----------------
+<RunContext>
+has: <WorkArea>
+has: <SymbolTable>
+
+<CLIContext> (<RunContext>)
+- run_shell
+
+<SourceContext> (<RunContext)
+- source_file
+- compile
+
+<Evaluter>
++ on_cli
++ on_source
+
