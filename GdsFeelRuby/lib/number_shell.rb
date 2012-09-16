@@ -32,7 +32,7 @@ while s = readline('? ', true)
       end
     end
   else
-    lc = GPLLineContext.new(s)
+    lc = LineContext.new(s)
     puts lc.debug_str
   end
 end

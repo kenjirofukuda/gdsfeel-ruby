@@ -252,7 +252,7 @@ module GPL
         #break if @reader.eof?
         break if @reader.is_eof
       end
-      if GPL::GPLNumber.ok_str?(@word)
+      if GPL::Number.ok_str?(@word)
         push_token(:NUMBER)
       else
         push_token(:ERROR_NUMBER)

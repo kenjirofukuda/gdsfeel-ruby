@@ -20,7 +20,7 @@ module GPL
        REAL2: 8,
   }
 
-  class GPLStruct
+  class DataStructure
     @ruby_value
     def self.re_str() '' end
     
@@ -46,6 +46,14 @@ module GPL
       sprintf "#<%s v=%s>", self.type, @ruby_value
     end
 
+    def attr
+      map = Hash.new
+      [:rank, :size, :type, :length, :mode].each {|s|
+        map[s] = self.send(s)      
+      }
+      map
+    end
+    
     def self.ok_str?(s)
       re = Regexp.new('^' + self.re_str + '$')
       if (re =~ s) != nil
@@ -55,17 +63,17 @@ module GPL
     end
   end
 
-  class GPLScalar < GPLStruct
+  class Scalar < DataStructure
     def rank() 1 end
     def size() 1 end
     def kind() :SCALAR end
   end
 
-  class GPLNumber < GPLScalar
+  class Number < Scalar
     def gexpr() @ruby_value.to_s end
   end
 
-  class GPLBoolean < GPLNumber
+  class Logical < Number
     def self.re_str
       '(1|0|TRUE|FALSE)'
     end
@@ -90,10 +98,10 @@ module GPL
 
   end
 
-  TRUE = GPLBoolean.new("TRUE").freeze
-  FALSE = GPLBoolean.new("FALSE").freeze
+  TRUE = Logical.new("TRUE").freeze
+  FALSE = Logical.new("FALSE").freeze
 
-  class GPLReal < GPLNumber
+  class Real < Number
     def self.re_str
       '([-])?([\d]+)*\.[\d]*'
     end
@@ -124,7 +132,7 @@ module GPL
 
   end
 
-  class GPLInteger < GPLNumber
+  class Integer < Number
     def self.re_str
       '([-])?[\d]+'
     end
@@ -134,7 +142,7 @@ module GPL
     end
 
     def kind
-      if @ruby_value >= -32768 and @ruby_value <= 32767 then
+      if @ruby_value.between?(-32768, 32767) then
         :INTEGER
       else
         :INTEGER2
@@ -143,16 +151,16 @@ module GPL
     
   end
 
-  class GPLFloat < GPLReal
+  class Float < Real
     def self.re_str
-      [ '(', GPLReal::re_str, '|', GPLInteger::re_str, ')',
-      'e', GPLInteger::re_str].join
+      [ '(', Real::re_str, '|', Integer::re_str, ')',
+      '(e|E)', Integer::re_str].join
     end
   end
 
-  class GPLNumber
+  class Number
     def self.re_str
-      or_re_str([GPLInteger::re_str, GPLReal::re_str, GPLFloat::re_str])
+      or_re_str([Integer::re_str, Real::re_str, Float::re_str])
     end
     
     ARRAY_RE_STR = '(' + self.re_str + ' )+'
@@ -165,7 +173,7 @@ module GPL
 #    end
   end
 
-  class GPLCharacter < GPLNumber
+  class Character < Number
     CHAR_CONST_IN_RE_STR = '([A-Z]+|[0-9]+)'
     CHAR_CONST_RE_STR = '<' + CHAR_CONST_IN_RE_STR + '>'
     CHAR_CONST_RE = Regexp.new( '^' + CHAR_CONST_RE_STR + '$' )
@@ -238,7 +246,7 @@ module GPL
     
   end
 
-  class GPLContainer < GPLStruct
+  class Container < DataStructure
     JOIN_STR = ' '
     def same_mode_only?
       true
@@ -253,11 +261,11 @@ module GPL
     end
   end
 
-  class GPLArray < GPLContainer
+  class Array < Container
     JOIN_STR = ' '
   end
 
-  class GPLVector < GPLArray
+  class Vector < Array
     JOIN_STR = ' '
     @elements
     def kind() :VECTOR end
@@ -269,7 +277,7 @@ module GPL
   end
 
 
-  NULL = GPLVector.new
+  NULL = Vector.new
 
   class << NULL
     def gexpr() '""' end
@@ -278,13 +286,13 @@ module GPL
 
   NULL.freeze
 
-  class GPLString < GPLVector
+  class String < Vector
     JOIN_STR = ''
 
     def initialize(s)
       @ruby_value = s
       @elements = s.split(//).collect { |ch|
-        GPLCharacter.new(ch)
+        Character.new(ch)
       }
     end
     
@@ -294,7 +302,7 @@ module GPL
     
   end
 
-  class GPLMatrix < GPLArray
+  class Matrix < Array
     def kind
       :MATRIX
     end
@@ -303,7 +311,7 @@ module GPL
     end
   end
 
-  class GPLList < GPLContainer
+  class List < Container
     JOIN_STR = ' '
     def same_mode_only?
       false
@@ -313,9 +321,9 @@ module GPL
     end
   end
 
-  class GPLValueFactory
+  class ValueFactory
     def self.from_str(str)
-      [GPLFloat, GPLReal, GPLInteger, GPLBoolean].each {|clazz|
+      [Float, Real, Integer, Logical].each {|clazz|
         if clazz.ok_str?(str)
           return clazz.new(str)
         end

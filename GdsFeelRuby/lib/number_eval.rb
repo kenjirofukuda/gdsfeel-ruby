@@ -18,7 +18,7 @@ end
 
 def category_of(s)
   type = :NIL
-  if GPLNumber.ok_str?(s) 
+  if Number.ok_str?(s) 
     type = :NUMBER
   elsif all_op_keys.include?(s)
     type = :KEYWORD
@@ -46,7 +46,7 @@ end
 
 module GPL
 
-  class GPLFlow
+  class Flow
     @tokens
     def initialize(tokens)
       @tokens = tokens
@@ -59,13 +59,13 @@ module GPL
     end
   end
 
-  class GPLFlowValueAssign < GPLFlow
+  class FlowValueAssign < Flow
   end
 
-  class GPLProgram < GPLFlow
+  class Program < Flow
   end
 
-  class GPLFlowIf < GPLFlow
+  class FlowIf < Flow
     def syntax_valid?
       @tokens[-1] == 'THEN' or @tokens[-1] == 'ENDIF'
     end
@@ -74,16 +74,16 @@ module GPL
     end
   end
 
-  class GPLFlowLoop < GPLFlow
+  class FlowLoop < Flow
   end
 
-  class GPLFlowSwitch < GPLFlow
+  class FlowSwitch < Flow
   end
 
-  class GPLFlowFactory
+  class FlowFactory
     CLASS_MAP = {
-      'IF' => GPLFlowIf,
-      'DO' => GPLFlowLoop,
+      'IF' => FlowIf,
+      'DO' => FlowLoop,
     }
 
     def self.create(tokens)
@@ -92,17 +92,17 @@ module GPL
     end
   end
 
-  class GPLValueFactory
+  class ValueFactory
     def self.from_str(str)
       v = nil
-      if GPLInteger.ok_str?(str)
-        GPLInteger.new            
+      if Integer.ok_str?(str)
+        Integer.new            
       end
       v
     end
   end
 
-  class GPLOperator
+  class Operator
     METHOD_TYPES = [ :DYADIC, :MONADIC, :NILADIC ]
     @name = ''
     @has_return_value = true  
@@ -134,7 +134,7 @@ module GPL
     end
 
     def self.named(name)
-      op = GPLOperator.new
+      op = Operator.new
       op.name = name
       op
     end
@@ -159,9 +159,9 @@ module GPL
     end
   end
 
-  GPLOperator.initialize
+  Operator.initialize
 
-  class GPLCommand < GPLOperator
+  class Command < Operator
     @@commands = {}
     def evalute
     end
@@ -187,11 +187,11 @@ module GPL
     end
 
     def self.initialize
-      register_command('GPLCommand_Vars')
+      register_command('Command_Vars')
     end
   end
 
-  class GPLCommand_Vars < GPLCommand
+  class Command_Vars < Command
     def initialize
       @name = 'VARS'
     end
@@ -204,12 +204,12 @@ module GPL
     end
   end
 
-  GPLCommand.initialize
+  Command.initialize
 
-  class GPLItem
+  class Item
   end
 
-  class GPLWorkArea
+  class WorkArea
     @@work_area = nil
     @vars = {}
     @subs = {}
@@ -227,7 +227,7 @@ module GPL
 
     def self.default
       if @@work_area == nil
-        @@work_area = GPLWorkArea.new
+        @@work_area = WorkArea.new
       end
       @@work_area
     end
@@ -237,7 +237,7 @@ module GPL
   def evalute(s)
     if (/([\w]+)\s?:=\s?(.+)/ =~ s) 
       var_name = $1  
-      if GPLCommand.builtin?(var_name)
+      if Command.builtin?(var_name)
         $stderr.puts "Can't Assign: #{var_name} becores builtin function"
         return ""
       end
@@ -247,8 +247,8 @@ module GPL
     end
 
     tokens = s.split(' ')
-    if GPLCommand.builtin?(tokens[0])
-      cmd = GPLCommand.named(tokens[0])
+    if Command.builtin?(tokens[0])
+      cmd = Command.named(tokens[0])
       if cmd != nil
         cmd.evalute
         return ""
@@ -261,7 +261,7 @@ module GPL
         ok = true  
       end
       if not ok 
-        if GPLNumber.ok_str?(word)
+        if Number.ok_str?(word)
           ok = true
         end
       end
@@ -273,7 +273,7 @@ module GPL
     tokens.join(" ")
   end
 
-  class GPLContext
+  class Context
     @lines
     @file
     @show_index
@@ -301,13 +301,13 @@ module GPL
     end
   end
 
-  class GPLContextTest
+  class ContextTest
     def self.setup_sample
-      gplc = GPLContext.new
+      gplc = Context.new
       gplc.add_line('KE#N:=+3.141592+3*6+(3-2 - -2.0+2**3)')
       gplc.add_line('KE$N := +3.141592 + 3 * 6 + (3 - 2 - -2.0 + 2 ** 3)')
       gplc.add_line('IF (LENGTH(FILEINFO TEMPLATE_DF))<5 THEN')
-      gplc.add_line('|  IF (LIB_NAME INDEXOF ":")>SIZE LIB_NAME THEN LIB_NAME:="GPLII:",LIB_NAME ENDIF')
+      gplc.add_line('|  IF (LIB_NAME INDEXOF ":")>SIZE LIB_NAME THEN LIB_NAME:="II:",LIB_NAME ENDIF')
       gplc.add_line('  IF X_CHK>0 THEN D_CHK:="Y" ELSE D_CHK:="N" ENDIF')
       gplc.add_line('  "   Check the Processed Structure Name (",D_CHK,"): <0>"')
       gplc.add_line('  "   Check the Processed Structure Name (",D_CHK,"): <0>" ,^')
@@ -318,14 +318,14 @@ module GPL
     def self.test1line
       gplc = setup_sample
       gplc.lines.each { |statement|
-        le = GPLLineContext.new(statement)
+        le = LineContext.new(statement)
         p statement
         p le.as_html_tag
         p le.tokens_from_nsrange
         p (le.ranges)
         p le.nsranges
         p le.unresolved_symbols
-        if GPLNumber::ARRAY_RE =~  statement
+        if Number::ARRAY_RE =~  statement
           puts "### DEBUG ### ARRAY LITERAL FOUND"
           p Regexp.last_match[0]
         end
@@ -336,7 +336,7 @@ module GPL
   end
 
 
-  class GPLToken
+  class Token
     @category
     @range
     @parent
@@ -432,7 +432,7 @@ module GPL
     end
   end
 
-  class GPLLineContext < GPLToken
+  class LineContext < Token
     TOKEN_DELIMS = '+-*/:=()^%!<>,|'.split(//)
     DOUBLE_KEYS = [':=', '<>', '>=', '<=']
     DOUBLE_KEYS_FIRST_CHARS = DOUBLE_KEYS.collect { |dc| dc[0...1] }.uniq
@@ -636,7 +636,7 @@ module GPL
     def inspect_once
       split_to_token
       @tokens = nsranges.collect { |nr|
-        t = GPLToken.new(self, nr)
+        t = Token.new(self, nr)
         t.inspect_once
       }
     end
