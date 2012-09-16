@@ -9,32 +9,55 @@ end
 
 module GPL
 
+  KIND_TO_MODE_MAP = {
+     LOGICAL: 1,
+     INTEGER: 2,
+        REAL: 3,
+        CAHR: 4,
+        NULL: 5,
+        LIST: 6,
+    INTEGER2: 7,
+       REAL2: 8,
+  }
+
   class GPLStruct
     @ruby_value
-
+    def self.re_str() '' end
+    
     def rank() 0 end
+
+    def size() 0 end
 
     def kind() :NIL end
 
+    def type() kind().to_s end
+    
+    def length() 1 end
+
+    def mode() KIND_TO_MODE_MAP[kind] end
+    
     def pr
       p @ruby_value
     end
 
-    def mode() :NIL end
-
     def gexpr() "" end
     
     def inspect
-      sprintf "#<%s v=%s>", self.mode, @ruby_value
+      sprintf "#<%s v=%s>", self.type, @ruby_value
+    end
+
+    def self.ok_str?(s)
+      re = Regexp.new('^' + self.re_str + '$')
+      if (re =~ s) != nil
+        return true
+      end
+      false
     end
   end
 
-  GPLNull = GPLStruct.new
-  class << GPLNull
-    def gexpr() '""' end
-  end
-
   class GPLScalar < GPLStruct
+    def rank() 1 end
+    def size() 1 end
     def kind() :SCALAR end
   end
 
@@ -43,6 +66,9 @@ module GPL
   end
 
   class GPLBoolean < GPLNumber
+    def self.re_str
+      '(1|0|TRUE|FALSE)'
+    end
 
     def initialize(str)
       @ruby_value = false
@@ -57,23 +83,26 @@ module GPL
     end
 
     def gexpr
-      if @ruby_value then "TRUE" else "FALSE" end
+      if @ruby_value then "1" else "0" end
     end
     
-    def mode() :LOGICAL end
+    def kind() :LOGICAL end
+
   end
 
-  GPLTrue = GPLBoolean.new("TRUE")
-  GPLFalse = GPLBoolean.new("FALSE")
+  TRUE = GPLBoolean.new("TRUE").freeze
+  FALSE = GPLBoolean.new("FALSE").freeze
 
   class GPLReal < GPLNumber
-    RE_STR = '([-])?([\d]+)*\.[\d]*'
+    def self.re_str
+      '([-])?([\d]+)*\.[\d]*'
+    end
 
     def initialize(str)
       @ruby_value = str.to_f
     end
 
-    def mode() :REAL end
+    def kind() :REAL end
 
     def gexpr
       s = @ruby_value.to_s
@@ -93,24 +122,19 @@ module GPL
       s
     end
 
-    def self.ok_str?(s)
-      re = Regexp.new('^' + RE_STR + '$')
-      if (re =~ s) != nil
-        return true
-      end
-      false
-    end
   end
 
   class GPLInteger < GPLNumber
-    RE_STR = '([-])?[\d]+'
+    def self.re_str
+      '([-])?[\d]+'
+    end
 
     def initialize(str)
       @ruby_value = str.to_i
     end
 
-    def mode
-      if @ruby_value >= -32767 and @ruby_value <= 32768 then
+    def kind
+      if @ruby_value >= -32768 and @ruby_value <= 32767 then
         :INTEGER
       else
         :INTEGER2
@@ -120,38 +144,25 @@ module GPL
   end
 
   class GPLFloat < GPLReal
-    RE_STR = [ '(', GPLReal::RE_STR, '|', GPLInteger::RE_STR, ')',
-                'e', GPLInteger::RE_STR].join 
-
-    def self.ok_str?(s)
-      re = Regexp.new('^' + RE_STR + '$')
-      if (re =~ s) != nil
-        return true
-      end
-      false
-    end
-  end
-
-  class GPLInteger
-    def self.ok_str?(s)
-      re = Regexp.new('^' + RE_STR + '$')
-      if (re =~ s) != nil
-        return true
-      end
-      false
+    def self.re_str
+      [ '(', GPLReal::re_str, '|', GPLInteger::re_str, ')',
+      'e', GPLInteger::re_str].join
     end
   end
 
   class GPLNumber
-    RE_STR = or_re_str([GPLInteger::RE_STR, GPLReal::RE_STR, GPLFloat::RE_STR])
-    ARRAY_RE_STR = '(' + RE_STR + ' )+'
+    def self.re_str
+      or_re_str([GPLInteger::re_str, GPLReal::re_str, GPLFloat::re_str])
+    end
+    
+    ARRAY_RE_STR = '(' + self.re_str + ' )+'
     ARRAY_RE = Regexp.new(ARRAY_RE_STR)
 
-    def self.ok_str?(s)
-      GPLInteger.ok_str?(s) or
-      GPLReal.ok_str?(s) or
-      GPLFloat.ok_str?(s) 
-    end
+#    def self.ok_str?(s)
+#      GPLInteger.ok_str?(s) or
+#      GPLReal.ok_str?(s) or
+#      GPLFloat.ok_str?(s)
+#    end
   end
 
   class GPLCharacter < GPLNumber
@@ -209,7 +220,7 @@ module GPL
       end
     end
 
-    def mode
+    def kind
       :CHAR
     end
 
@@ -222,7 +233,7 @@ module GPL
     end
     
     def inspect
-      sprintf "#<%s v=%d chr='%s'>", mode, ord, gexpr
+      sprintf "#<%s v=%d chr='%s'>", type, ord, gexpr
     end
     
   end
@@ -249,16 +260,23 @@ module GPL
   class GPLVector < GPLArray
     JOIN_STR = ' '
     @elements
-    def kind
-      :VECTOR
-    end
-    def rank
-      1
-    end
+    def kind() :VECTOR end
+    def rank() 1 end
+
     def elements
       @elements
     end
   end
+
+
+  NULL = GPLVector.new
+
+  class << NULL
+    def gexpr() '""' end
+    def kind() :NULL end
+  end
+
+  NULL.freeze
 
   class GPLString < GPLVector
     JOIN_STR = ''
@@ -297,11 +315,12 @@ module GPL
 
   class GPLValueFactory
     def self.from_str(str)
-      v = nil
-      if GPLInteger.ok_str?(str)
-        GPLInteger.new            
-      end
-      v
+      [GPLFloat, GPLReal, GPLInteger, GPLBoolean].each {|clazz|
+        if clazz.ok_str?(str)
+          return clazz.new(str)
+        end
+      }
+      nil
     end
   end
 
