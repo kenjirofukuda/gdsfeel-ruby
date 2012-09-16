@@ -40,34 +40,7 @@ Phase 2:
 
 [ ]クラス構成
 --------------------- データストラクチャー ----------------
-<Structure>
-変数に格納できる単位
-- mode
-- rank
-
-<Scalar>
-- rank := 0
-
-<Logical>(<Scalar>)
-- value := 0 or 1
-
-<Number>(<Scalar>)
-{#NUMBER} := #INTEGER | #REAL
-- mode := #NUMBER
-- as_real
-
-<Character>(<Scalar>)
-- mode := #CHAR
-
-<Array>(Structure)
-has: <Primitive>
-- element_mode
-
-<Vector>(<Array>)
-- rank: 1
-
-<String>(<Vector>)
-- element_mode := #CHAR
+@see: gdsfeel-common/GPL_DATASTRUCTURE.txt
 
 -------------- 汎用入出力 ----------------
 <Reader>

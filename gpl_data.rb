@@ -11,23 +11,18 @@ module GPL
 
   class GPLStruct
     @ruby_value
-    def initialize
-    end
-    def rank
-      return 0
-    end
-    def kind
-      :NIL
-    end
+
+    def rank 0 end
+
+    def kind :NIL end
+
     def pr
       p @ruby_value
     end
-    def mode
-      :NIL
-    end
-    def gexpr
-      ""
-    end
+
+    def mode :NIL end
+
+    def gexpr "" end
     
     def inspect
       sprintf "#<%s v=%s>", self.mode, @ruby_value
@@ -36,21 +31,15 @@ module GPL
 
   GPLNull = GPLStruct.new
   class << GPLNull
-    def gexpr
-      '""'
-    end
+    def gexpr '""' end
   end
 
   class GPLScalar < GPLStruct
-    def kind
-      :SCALAR
-    end
+    def kind :SCALAR end
   end
 
   class GPLNumber < GPLScalar
-    def gexpr
-      @ruby_value.to_s
-    end
+    def gexpr @ruby_value.to_s end
   end
 
   class GPLBoolean < GPLNumber
@@ -71,9 +60,7 @@ module GPL
       if @ruby_value then "TRUE" else "FALSE" end
     end
     
-    def mode
-      :LOGICAL
-    end
+    def mode :LOGICAL end
   end
 
   GPLTrue = GPLBoolean.new("TRUE")
@@ -86,9 +73,7 @@ module GPL
       @ruby_value = str.to_f
     end
 
-    def mode
-      :REAL
-    end
+    def mode :REAL end
 
     def gexpr
       s = @ruby_value.to_s
